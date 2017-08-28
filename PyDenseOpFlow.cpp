@@ -7,8 +7,36 @@ using namespace cv::gpu;
 typedef std::vector<float> ResultFlow;
 typedef unsigned int uint;
 
-#define CAST(v, L, H) ((v) >= (H) ? (H) : (v) <= (L) ? (L) : (v))
+#define CAST(v, L, H) (((v) >= (H) ? (H) : (v) <= (L) ? (L) : (v)) / H)
 
+struct RGBTo01Transformer {
+	float operator()(float &elem) const {
+		return (elem - 127.5f) / 127.5f;
+	}
+};
+struct OpticalFlowTransformer {
+private:
+	float bound;
+public:
+	OpticalFlowTransformer(float _bound): bound(_bound) {}
+
+	float operator()(float &elem) const {
+		return ((elem >= bound ? bound : elem <= -bound ? -bound : elem) / bound);
+	}
+};
+struct ROIExtractor {
+private:
+	uint destWidth, destHeight, x, y;
+public:
+	ROIExtractor(uint _destWidth, uint _destHeight, uint _sourceWidth, uint _sourceHeight): destWidth(_destWidth), destHeight(_destHeight) {
+		x = (_sourceWidth / 2) - (destWidth / 2);
+		y = (_sourceHeight / 2) - (destHeight / 2);
+	}
+
+	Mat operator()(Mat & elem) const {
+		return elem(Rect(x, y, destWidth, destHeight));
+	}
+};
 enum SmallerDimension { row, col };
 SmallerDimension getSmallerDimension(const Mat& frame);
 void scaleFramePreserveAR(Mat& frame);
@@ -26,7 +54,11 @@ void init(const Mat& frame, Mat& currentColor, Mat& previousColor, Mat& currentG
 	cvtColor(previousColor, previousGray, CV_BGR2GRAY);
 }
 
-void convert(const std::vector<Mat*>& input, std::vector<float>& result, int bound) {
+
+
+
+
+void convert(const std::vector<Mat*>& input, std::vector<float>& result, float bound) {
 	uint rows = 224;
 	uint cols = 224;
 	Rect rec((input.at(0)->cols / 2) - (cols / 2), (input.at(0)->rows / 2) - (rows / 2), cols, rows);
@@ -38,11 +70,41 @@ void convert(const std::vector<Mat*>& input, std::vector<float>& result, int bou
 			float* rowU = roiU.ptr<float>(j);
 			float* rowV = roiV.ptr<float>(j);
 			for (uint k=0; k<cols; k++) {
-				result[1 + i * rows * cols + j * rows * 2 + k * 2] = CAST(rowU[k], -1*bound, bound)/bound;
-				result[1 + i * rows * cols + j * rows * 2 + k * 2 + 1] = CAST(rowV[k], -1*bound, bound)/bound;
+				result[1 + i * rows * cols + j * rows * 2 + k * 2] = CAST(rowU[k], -1*bound, bound);
+				result[1 + i * rows * cols + j * rows * 2 + k * 2 + 1] = CAST(rowV[k], -1*bound, bound);
 			}	
 		}
 	}
+}
+void convertFlows(std::vector<Mat>& input, std::vector<float>& result, float bound) {
+	std::transform(input.begin(), input.end(), input.begin(), ROIExtractor(224, 224, input.at(0).cols, input.at(0).rows));
+	result.push_back(input.size()/2);
+	for (uint i =0; i<input.size(); i++) {
+		if (input.at(i).isContinuous()) {
+			result.insert(result.end(), input.at(i).datastart, input.at(i).dataend);
+		}
+		else {
+			for (uint j=0; j<(uint)input.at(i).rows; j++) {
+				result.insert(result.end(), input.at(i).ptr<float>(j), input.at(i).ptr<float>(j) + input.at(i).cols);
+			}
+		}
+	}
+	std::transform(result.begin()+1, result.end(), result.begin()+1, OpticalFlowTransformer(bound));
+}
+void convertFrames(std::vector<Mat>& input, std::vector<float>& result) {
+	std::transform(input.begin(), input.end(), input.begin(), ROIExtractor(224, 224, input.at(0).cols, input.at(0).rows));
+	result.push_back(input.size());
+	for (uint i=0; i<input.size(); i++) {
+		if (input.at(i).isContinuous()) {
+			result.insert(result.end(), input.at(i).datastart, input.at(i).dataend);
+		}
+		else {
+			for (uint j =0; j<(uint)input.at(i).rows; j++) {
+				result.insert(result.end(), input.at(i).ptr<uchar>(j), input.at(i).ptr<uchar>(j) + input.at(i).cols * 3);
+			}
+		}
+	}
+	std::transform(result.begin()+1, result.end(), result.begin()+1, RGBTo01Transformer());
 }
 
 void cleanUp(std::vector<Mat*>& input) {
@@ -72,7 +134,62 @@ void scaleFramePreserveAR(Mat& frame) {
 	std::cout<<frame.rows<<"::"<<frame.cols<<std::endl;
 }
 
-void calculateOpFlow(const char* video, int step, std::vector<Mat*>& result) {	
+//TODO:: check video file name is not empty
+void getFrames(const char* video, int step, std::vector<Mat>& resultFrames) {
+	VideoCapture capture(video);
+	Mat frame;
+	if (!capture.isOpened()) {
+		std::cout<<"Unable to open the video";
+		return;
+	}
+
+	int frameNum = 0;
+	while(true) {
+		capture>>frame;
+		if (frame.empty()) {
+			break;
+		}
+		capture.set(CV_CAP_PROP_POS_FRAMES, frameNum + step);
+		frameNum += step;
+		scaleFramePreserveAR(frame);
+		resultFrames.push_back(frame);
+	}
+}
+void calculateOpFlow(const std::vector<Mat>& frames, std::vector<Mat>& flows) {
+	if (frames.size() == 0) {
+		return;
+	}
+
+	setDevice(0);
+	OpticalFlowDual_TVL1_GPU alg_tvl1;
+	
+	Mat currentGray, previousGray, flowU, flowV;
+	GpuMat currentGray_d, previousGray_d, flowU_d, flowV_d;
+	for (uint i=0; i<frames.size()-1; i++) {
+		if ( i == 0 ) {
+			cvtColor(frames.at(i), previousGray, CV_BGR2GRAY);
+
+			continue;
+		}
+		cvtColor(frames.at(i), currentGray, CV_BGR2GRAY);
+
+		currentGray_d.upload(currentGray);
+		previousGray_d.upload(previousGray);
+
+		alg_tvl1(previousGray_d, currentGray_d, flowU_d, flowV_d);
+		flowU_d.download(flowU);
+		flowV_d.download(flowV);
+
+		flows.push_back(flowU);
+		flows.push_back(flowV);
+
+		std::swap(previousGray, currentGray);
+		
+		
+	}
+}
+
+void calculateOpFlow(const char* video, int step, std::vector<Mat*>& resultFlow, std::vector<Mat>& resultFrames) {	
 	if (!video) {
 		std::cout<<"Unable to open video";
 		return;
@@ -98,13 +215,16 @@ void calculateOpFlow(const char* video, int step, std::vector<Mat*>& result) {
 		}
 		if (frameNum == 0) {
 			init(frame, currentColor, previousColor, currentGray, previousGray);
-			
+			resultFrames.push_back(previousColor.clone());
+
 			capture.set(CV_CAP_PROP_POS_FRAMES, frameNum + step);
 			frameNum += step;
 			continue;
 		}
 		frame.copyTo(currentColor);
 		scaleFramePreserveAR(currentColor);
+		resultFrames.push_back(currentColor.clone());
+
 		cvtColor(currentColor, currentGray, CV_BGR2GRAY);
 
 		previousGray_d.upload(previousGray);
@@ -118,8 +238,8 @@ void calculateOpFlow(const char* video, int step, std::vector<Mat*>& result) {
 		flowU_d.download(*flowU);
 		flowV_d.download(*flowV);
 
-		result.push_back(flowU);
-		result.push_back(flowV);
+		resultFlow.push_back(flowU);
+		resultFlow.push_back(flowV);
 
 		std::swap(previousGray, currentGray);
 		capture.set(CV_CAP_PROP_POS_FRAMES, frameNum + step);
@@ -129,7 +249,17 @@ void calculateOpFlow(const char* video, int step, std::vector<Mat*>& result) {
 
 ResultFlow getOpticalFlow(const char* video, int step, int bound) {
 	std::vector<Mat*> flows;
-	calculateOpFlow(video, step, flows);
+	//calculateOpFlow(video, step, flows);
+
+	if (video != NULL ) {
+		std::vector<Mat> frames, flows;
+		getFrames(video, step, frames);
+		calculateOpFlow(frames, flows);
+
+		if (frames.size() > 0 && flows.size() > 0) {
+
+		}
+	}
 
 	if (flows.size() == 0) {
 		ResultFlow ret;
