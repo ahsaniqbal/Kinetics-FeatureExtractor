@@ -4,10 +4,12 @@
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 using namespace cv::gpu;
 
-typedef std::vector<float> ResultFlow;
+typedef std::vector<float> FloatVec;
+typedef std::vector<FloatVec > VecOfFloatVec;
 typedef unsigned int uint;
 
 #define CAST(v, L, H) ((v) >= (H) ? (H) : (v) <= (L) ? (L) : (v))
+
 
 struct RGBTo01Transformer {
 	float operator()(float &elem) const {
@@ -70,42 +72,31 @@ void convertFlows(const std::vector<Mat>& input, std::vector<float>& result, flo
 			float* rowU = roiU.ptr<float>(j);
 			float* rowV = roiV.ptr<float>(j);
 			for (uint k=0; k<cols; k++) {
-				result[1 + i * rows * cols + j * rows * 2 + k * 2] = CAST(rowU[k], -1*bound, bound) / bound;
-				result[1 + i * rows * cols + j * rows * 2 + k * 2 + 1] = CAST(rowV[k], -1*bound, bound) / bound;
+				result[1 + (i * cols * rows) + (j * cols * 2) + k * 2 + 0] = CAST(rowU[k], -1*bound, bound) / bound;
+				result[1 + (i * cols * rows) + (j * cols * 2) + k * 2 + 1] = CAST(rowV[k], -1*bound, bound) / bound;
 			}	
 		}
 	}
 }
-/*void convertFlows(std::vector<Mat>& input, std::vector<float>& result, float bound) {
-	std::cout<<input.size()<<std::endl;
-	std::transform(input.begin(), input.end(), input.begin(), ROIExtractor(224, 224, input.at(0).cols, input.at(0).rows));
-	result.push_back(input.size()/2);
-	for (uint i =0; i<input.size(); i++) {
-		if (input.at(i).isContinuous()) {
-			result.insert(result.end(), input.at(i).datastart, input.at(i).dataend);
-		}
-		else {
-			for (uint j=0; j<(uint)input.at(i).rows; j++) {
-				result.insert(result.end(), input.at(i).ptr<float>(j), input.at(i).ptr<float>(j) + input.at(i).cols);
-			}
-		}
-	}
-	std::transform(result.begin()+1, result.end(), result.begin()+1, OpticalFlowTransformer(bound));
-}*/
 void convertFrames(std::vector<Mat>& input, std::vector<float>& result) {
-	std::transform(input.begin(), input.end(), input.begin(), ROIExtractor(224, 224, input.at(0).cols, input.at(0).rows));
-	result.push_back(input.size());
-	for (uint i=0; i<input.size(); i++) {
-		if (input.at(i).isContinuous()) {
-			result.insert(result.end(), input.at(i).datastart, input.at(i).dataend);
-		}
-		else {
-			for (uint j =0; j<(uint)input.at(i).rows; j++) {
-				result.insert(result.end(), input.at(i).ptr<uchar>(j), input.at(i).ptr<uchar>(j) + input.at(i).cols * 3);
+	uint height = 224;
+	uint width = 224;
+	Rect rec((input.at(0).cols / 2) - (width / 2), (input.at(0).rows / 2) - (height / 2), width, height);
+	result[0] = input.size() - 1;
+
+	for (uint i=0; i<input.size() - 1; i++) {
+		Mat roi = (input.at(i))(rec);
+		for (uint j=0; j<(uint)roi.rows; j++) {
+			Vec3b *row = roi.ptr<Vec3b>(j);
+			for (uint k=0; k<(uint)roi.cols; k++) {
+				uint index = 1 + (i * 3 * roi.cols * roi.rows) + (j * 3 * roi.cols) + k * 3;
+				//copy BGR mat to vector as RGB
+				result[index + 0] = ((float)row[k].val[2] - 127.5f) / 127.5f;
+				result[index + 1] = ((float)row[k].val[1] - 127.5f) / 127.5f;
+				result[index + 2] = ((float)row[k].val[0] - 127.5f) / 127.5f;
 			}
 		}
 	}
-	std::transform(result.begin()+1, result.end(), result.begin()+1, RGBTo01Transformer());
 }
 
 void cleanUp(std::vector<Mat*>& input) {
@@ -187,88 +178,25 @@ void calculateOpFlow(const std::vector<Mat>& frames, std::vector<Mat>& flows) {
 	}
 }
 
-void calculateOpFlow(const char* video, int step, std::vector<Mat*>& resultFlow) {	
-	if (!video) {
-		std::cout<<"Unable to open video";
-		return;
-	}
-
-	VideoCapture capture(video);
-	if(!capture.isOpened()) {
-		std::cout<<"Unable to open the video";
-		return;
-	}
-
-	int frameNum = 0;
-	Mat currentColor, previousColor, previousGray, currentGray, frame, *flowU, *flowV;
-	GpuMat previousGray_d, currentGray_d, flowU_d, flowV_d;
-
-	setDevice(0);
-	OpticalFlowDual_TVL1_GPU alg_tvl1;
-
-	while(true) {
-		capture>>frame;
-		if (frame.empty()) {
-			break;
-		}
-
-		if (frameNum == 0) {
-			init(frame, currentColor, previousColor, currentGray, previousGray);
-			//resultFrames.push_back(previousColor.clone());
-
-			capture.set(CV_CAP_PROP_POS_FRAMES, frameNum + step);
-			frameNum += step;
-			continue;
-		}
-		frame.copyTo(currentColor);
-		scaleFramePreserveAR(currentColor);
-		//resultFrames.push_back(currentColor.clone());
-
-		cvtColor(currentColor, currentGray, CV_BGR2GRAY);
-
-		previousGray_d.upload(previousGray);
-		currentGray_d.upload(currentGray);
-
-		alg_tvl1(previousGray_d, currentGray_d, flowU_d, flowV_d);
-
-		flowU = new Mat();
-		flowV = new Mat();		
-
-		flowU_d.download(*flowU);
-		flowV_d.download(*flowV);
-
-		resultFlow.push_back(flowU);
-		resultFlow.push_back(flowV);
-		std::swap(previousGray, currentGray);
-		capture.set(CV_CAP_PROP_POS_FRAMES, frameNum + step);
-		frameNum += step;
-	}
-}
-
-ResultFlow getOpticalFlow(const char* video, int step, int bound) {
-	//std::vector<Mat*> flows_;
-	//calculateOpFlow(video, step, flows_);
-	std::vector<float> result;
+VecOfFloatVec getOpticalFlow(const char* video, int step, int bound) {
+	VecOfFloatVec result;
 	if (video != NULL ) {
 		
 		std::vector<Mat> frames, flows;
 		getFrames(video, step, frames);
-		calculateOpFlow(frames, flows);		
+		calculateOpFlow(frames, flows);
 		
 		if (frames.size() > 0 && flows.size() > 0) {
-			result.resize(1 + flows.size() * 224 * 224);
-			convertFlows(flows, result, bound);
+			std::vector<float> resultFrames(1 + (frames.size() - 1) * 224 * 224 * 3, 0);		
+			std::vector<float> resultFlows(1 + flows.size() * 224 * 224, 0);
+			convertFlows(flows, resultFlows, bound);
+			convertFrames(frames, resultFrames);
+
+			result.push_back(resultFrames);
+			result.push_back(resultFlows);
 		}
 	}
 
-	/*if (flows.size() == 0) {
-		ResultFlow ret;
-		return ret;
-	}*/
-
-	//std::vector<float> result(1 + flows.size() * 224 * 224, 0);
-	//convert(flows, result, bound);
-	//cleanUp(flows);
 	return result;	
 }
 
@@ -276,8 +204,10 @@ ResultFlow getOpticalFlow(const char* video, int step, int bound) {
 BOOST_PYTHON_MODULE(libpyOpFlow) {
 	using namespace boost::python;
 
-	class_<ResultFlow>("ResultFlow")
-		.def(vector_indexing_suite<ResultFlow>());
+	class_<FloatVec>("FloatVec")
+		.def(vector_indexing_suite<FloatVec>());
+	class_<VecOfFloatVec>("VecOfFloatVec")
+		.def(vector_indexing_suite<VecOfFloatVec>());
 
 	def("getOpticalFlow", getOpticalFlow);	
 }
