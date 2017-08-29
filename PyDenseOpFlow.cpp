@@ -179,8 +179,8 @@ void calculateOpFlow(const std::vector<Mat>& frames, std::vector<Mat>& flows) {
 		flowU_d.download(flowU);
 		flowV_d.download(flowV);
 
-		flows.push_back(flowU);
-		flows.push_back(flowV);
+		flows.push_back(flowU.clone());
+		flows.push_back(flowV.clone());
 		std::swap(previousGray, currentGray);
 		
 		
