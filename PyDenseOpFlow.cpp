@@ -82,9 +82,9 @@ void convertFrames(std::vector<Mat>& input, std::vector<float>& result) {
 	uint height = 224;
 	uint width = 224;
 	Rect rec((input.at(0).cols / 2) - (width / 2), (input.at(0).rows / 2) - (height / 2), width, height);
-	result[0] = input.size() - 1;
+	result[0] = input.size();
 
-	for (uint i=0; i<input.size() - 1; i++) {
+	for (uint i=0; i<input.size(); i++) {
 		Mat roi = (input.at(i))(rec);
 		for (uint j=0; j<(uint)roi.rows; j++) {
 			Vec3b *row = roi.ptr<Vec3b>(j);
@@ -187,7 +187,7 @@ VecOfFloatVec getOpticalFlow(const char* video, int step, int bound) {
 		calculateOpFlow(frames, flows);
 		
 		if (frames.size() > 0 && flows.size() > 0) {
-			std::vector<float> resultFrames(1 + (frames.size() - 1) * 224 * 224 * 3, 0);		
+			std::vector<float> resultFrames(1 + (frames.size()) * 224 * 224 * 3, 0);		
 			std::vector<float> resultFlows(1 + flows.size() * 224 * 224, 0);
 			convertFlows(flows, resultFlows, bound);
 			convertFrames(frames, resultFrames);
