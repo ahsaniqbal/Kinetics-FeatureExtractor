@@ -13,10 +13,10 @@ IF(Boost_FOUND)
   SET(Boost_USE_STATIC_LIBS OFF)
   SET(Boost_USE_MULTITHREADED ON)
   SET(Boost_USE_STATIC_RUNTIME OFF)
-  FIND_PACKAGE(Boost 1.65.0 COMPONENTS python)
+  FIND_PACKAGE(Boost 1.65.0 COMPONENTS python numpy)
 
-  ADD_LIBRARY(pyOpFlow SHARED PyDenseOpFlow.cpp Converter.cpp)
-  TARGET_LINK_LIBRARIES(pyOpFlow ${Boost_LIBRARIES}
+  ADD_LIBRARY(PreProcessor SHARED PreProcessor.cpp)
+  TARGET_LINK_LIBRARIES(PreProcessor ${Boost_LIBRARIES}
 				  ${OpenCV_LIBS})
 ELSEIF(NOT Boost_FOUND)
   MESSAGE(FATAL_ERROR "Unable to find correct Boost version. Did you set BOOST_ROOT?")
