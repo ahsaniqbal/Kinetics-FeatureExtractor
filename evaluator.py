@@ -78,22 +78,15 @@ def main(path_to_videos='', path_to_labels='', base_path_to_chk_pts=''):
 		correctly_classified = 0
 		for idx, vid in enumerate(video_data):
 			print(vid['video'])
-			total_processed += 1
 			try:
 				preProcessor.initialize(vid['video'])
-				flow = preProcessor.getOpticalFlow(20.0)
+				flow = preProcessor.getOpticalFlows(20.0)
 				rgb = preProcessor.getFrames()
 
 				flow = np.reshape(flow, (1, flow.shape[0], 224, 224, 2))
 				rgb = np.reshape(rgb, (1, rgb.shape[0], 224, 224, 3))
-				#flow_rgb = libpyOpFlow.getOpticalFlow(vid['video'], 1, 20)
-				#frame_count = flow_rgb[0][0]
-				#flow_count = flow_rgb[1][0]
-
-			
-				#rgb = np.reshape(np.array(flow_rgb[0][1:], dtype=np.float32), (1, int(frame_count), 224, 224, 3))
-				#flow = np.reshape(np.array(flow_rgb[1][1:], dtype=np.float32), (1, int(flow_count), 224, 224, 2))
-			except:
+			except Exception as e:
+				print(str(e))
 				continue
 			feed_dict[rgb_input] = rgb
 			feed_dict[flow_input] = flow
@@ -104,6 +97,7 @@ def main(path_to_videos='', path_to_labels='', base_path_to_chk_pts=''):
 
 			sorted_indices = np.argsort(out_predictions)[::-1]
 
+			total_processed += 1
 			correctly_classified += 1 if int(vid['label']) == sorted_indices[0] else 0
 			print('Norm of logits: %f' % np.linalg.norm(out_logits))
 			print('True Class:{0}'.format(kinetics_classes[int(vid['label'])]))
