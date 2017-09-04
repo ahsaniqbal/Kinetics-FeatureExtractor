@@ -7,7 +7,7 @@ import tensorflow as tf
 
 import i3d
 
-import libpyOpFlow
+import libPreProcessor
 import os
 import os.path as osp
 import begin
@@ -67,6 +67,8 @@ def main(path_to_videos='', path_to_labels='', base_path_to_chk_pts=''):
 	model_logits = rgb_logits + flow_logits
 	model_predictions = tf.nn.softmax(model_logits)
 
+	preProcessor = libPreProcessor.PreProcessor()
+
 	with tf.Session() as sess:
 		feed_dict = {}
 		
@@ -78,13 +80,19 @@ def main(path_to_videos='', path_to_labels='', base_path_to_chk_pts=''):
 			print(vid['video'])
 			total_processed += 1
 			try:
-				flow_rgb = libpyOpFlow.getOpticalFlow(vid['video'], 1, 20)
-				frame_count = flow_rgb[0][0]
-				flow_count = flow_rgb[1][0]
+				preProcessor.initialize(vid['video'])
+				flow = preProcessor.getOpticalFlow(20.0)
+				rgb = preProcessor.getFrames()
+
+				flow = np.reshape(flow, (1, flow.shape[0], 224, 224, 2))
+				rgb = np.reshape(rgb, (1, rgb.shape[0], 224, 224, 3))
+				#flow_rgb = libpyOpFlow.getOpticalFlow(vid['video'], 1, 20)
+				#frame_count = flow_rgb[0][0]
+				#flow_count = flow_rgb[1][0]
 
 			
-				rgb = np.reshape(np.array(flow_rgb[0][1:], dtype=np.float32), (1, int(frame_count), 224, 224, 3))
-				flow = np.reshape(np.array(flow_rgb[1][1:], dtype=np.float32), (1, int(flow_count), 224, 224, 2))
+				#rgb = np.reshape(np.array(flow_rgb[0][1:], dtype=np.float32), (1, int(frame_count), 224, 224, 3))
+				#flow = np.reshape(np.array(flow_rgb[1][1:], dtype=np.float32), (1, int(flow_count), 224, 224, 2))
 			except:
 				continue
 			feed_dict[rgb_input] = rgb
