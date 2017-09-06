@@ -5,6 +5,7 @@ path = '/media/data/ActivityNet'
 '''
 clss = [osp.join(path, cl) for cl in os.listdir(path) if osp.isdir(osp.join(path, cl))]
 
+# no matter what you do here, make sure at the end vids contains a list with all video filenames
 vids = []
 for cl in clss:
 	vids += [osp.join(cl, vid) for vid in os.listdir(cl) if osp.isfile(osp.join(cl, vid)) and vid.endswith('.avi')]
