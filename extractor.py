@@ -164,10 +164,6 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 					if more == False:
 						v.finalize(dest_path)
 						break
-					
-				break
-				'''
-				'''
 			except Exception as e:
 				print(str(e))
 		stop = timeit.default_timer()
