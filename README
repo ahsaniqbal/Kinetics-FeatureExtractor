@@ -1,0 +1,20 @@
+The script extracts frame level features from kinetics-i3d model (https://arxiv.org/abs/1705.07750).
+
+Dependencies:
+1. OpenCV 2.4.13 compiled with GPU support
+2. boost_python 1.65.0
+3. Trained kinetics-i3d model (https://github.com/deepmind/kinetics-i3d)
+4. TensorFlow 
+5. Sonnet 
+
+Steps to Run:
+1. Build Preprocessor.so (CMakeList.txt is provided, please adjust paths)
+2. run python ./extractor.py (it expects i3d.py (kinetics-i3d model code) in the same directory)
+	2.1 extractor.py expects list of video file names, 
+	2.2 temporal_window for each frame default is 3
+	2.3 batch_size default is 1
+	2.4 dest_path (path to destination features)
+	2.5 clip_optical_flow_at default value is 20
+	2.6 base_path_to_chk_pts base path to model (kinetics-i3d) parameters 
+
+A helper script FE_helper.py is also provided, please adjust it to your needs 
