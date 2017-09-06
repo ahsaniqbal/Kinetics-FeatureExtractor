@@ -6,14 +6,21 @@ IF(NOT CMAKE_BUILD_TYPE)
   #SET(CMAKE_BUILD_TYPE "MINSIZEREL")
 ENDIF()
 
-FIND_PACKAGE(OpenCV REQUIRED)
-FIND_PACKAGE(Boost 1.65.0)
+SET (BOOST_ROOT "/media/work/ahsan/libs/boost")
+SET (BOOST_INCLUDEDIR "/media/work/ahsan/libs/boost/include")
+SET (BOOST_LIBRARYDIR "/media/work/ahsan/libs/boost/lib")
+SET (BOOST_MIN_VERSION "1.65.0")
+set (Boost_NO_BOOST_CMAKE ON)
+
+
+FIND_PACKAGE(OpenCV 2.4.13 REQUIRED PATHS /media/work/ahsan/libs/opencv-gpu/share/OpenCV)
+FIND_PACKAGE(Boost ${BOOST_MIN_VERSION} REQUIRED)
 IF(Boost_FOUND)
   INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}" "/usr/include/python2.7" "${OpenCV_INCLUDE_DIRS}")
   SET(Boost_USE_STATIC_LIBS OFF)
   SET(Boost_USE_MULTITHREADED ON)
   SET(Boost_USE_STATIC_RUNTIME OFF)
-  FIND_PACKAGE(Boost 1.65.0 COMPONENTS python numpy)
+  FIND_PACKAGE(Boost ${BOOST_MIN_VERSION} COMPONENTS python numpy)
 
   ADD_LIBRARY(PreProcessor SHARED PreProcessor.cpp)
   TARGET_LINK_LIBRARIES(PreProcessor ${Boost_LIBRARIES}
