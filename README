@@ -8,8 +8,8 @@ Dependencies:
 5. Sonnet 
 
 Steps to Run:
-1. Build Preprocessor.so (CMakeList.txt is provided, please adjust paths)
-2. run python ./extractor.py (it expects i3d.py (kinetics-i3d model code) in the same directory)
+1. Build CppInterface.so (CMakeList.txt is provided, please adjust paths)
+2. run python ./extractor_lazy.py (it expects i3d.py (kinetics-i3d model code) in the same directory)
 	2.1 extractor.py expects list of video file names, 
 	2.2 temporal_window for each frame default is 3
 	2.3 batch_size default is 1
