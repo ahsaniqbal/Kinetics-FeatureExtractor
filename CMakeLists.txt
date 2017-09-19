@@ -22,7 +22,7 @@ IF(Boost_FOUND)
   SET(Boost_USE_STATIC_RUNTIME OFF)
   FIND_PACKAGE(Boost ${BOOST_MIN_VERSION} COMPONENTS python numpy)
 
-  ADD_LIBRARY(PreProcessor SHARED PreProcessor.cpp)
+  ADD_LIBRARY(PreProcessor SHARED PreProcessor.cpp Utils.cpp LazyLoader.cpp)
   TARGET_LINK_LIBRARIES(PreProcessor ${Boost_LIBRARIES}
 				  ${OpenCV_LIBS})
 ELSEIF(NOT Boost_FOUND)

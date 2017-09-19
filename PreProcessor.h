@@ -8,13 +8,15 @@
 #include <boost/scoped_array.hpp>
 #include <Python.h>
 #include <vector>
+#include "Utils.h"
 using namespace std;
 using namespace cv;
 using namespace cv::gpu;
 namespace p = boost::python;
 namespace np = boost::python::numpy;
 
-enum SmallerDimension { row, col };
+#ifndef _PREPROCESSOR_H_
+#define _PREPROCESSOR_H_
 
 class PreProcessor {
 private:
@@ -22,14 +24,15 @@ private:
 	std::vector<Mat> flows;
 
 	void populateFrames(const char* video);
-	void scaleFramePerserveAR(Mat& frame);
-	SmallerDimension getSmallerDimension(const Mat& frame);
-
-
 	void populateOpticalFlows();
-
+	
 public:
-	void initialize(const char* video_file);
+	PreProcessor() {}
+	~PreProcessor() { }
+	void initialize(const char* videoFile);
+
 	np::ndarray getOpticalFlows(float bound);
 	np::ndarray getFrames();
+	
 };
+#endif

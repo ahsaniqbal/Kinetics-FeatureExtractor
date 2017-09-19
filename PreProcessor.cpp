@@ -1,7 +1,6 @@
 #include "PreProcessor.h"
 #include <boost/python.hpp>
 using namespace boost::python;
-#define CAST(v, L, H) ((v) >= (H) ? (H) : (v) <= (L) ? (L) : (v))
 
 void PreProcessor::initialize(const char* video) {
 	frames.clear();
@@ -24,27 +23,9 @@ void PreProcessor::initialize(const char* video) {
 	}
 }
 
-SmallerDimension PreProcessor::getSmallerDimension(const Mat& frame) {
-	return frame.rows >= frame.cols ? col : row;
-}
-
-void PreProcessor::scaleFramePerserveAR(Mat& frame) {
-	SmallerDimension smallDim = getSmallerDimension(frame);
-	float scaleFactor = 1.0f;
-	switch(smallDim) {
-		case row:
-			scaleFactor = 256.0f / frame.rows;
-			break;
-		case col:
-		default:
-			scaleFactor = 256.0f / frame.cols;
-			break;
-	}
-	resize(frame, frame, Size(round(scaleFactor * frame.cols), round(scaleFactor * frame.rows)));	
-}
-
 void PreProcessor::populateFrames(const char* video) {
-	VideoCapture capture(video);
+	VideoCapture capture;
+	capture.open(video);
 	if (!capture.isOpened()) {
 		PyErr_SetString(PyExc_TypeError, "Unable to open the video");
 		p::throw_error_already_set();
@@ -65,7 +46,7 @@ void PreProcessor::populateFrames(const char* video) {
 		}
 		capture.set(CV_CAP_PROP_POS_FRAMES, frameNum + step);
 		frameNum += step;
-		scaleFramePerserveAR(frame);
+		Utils::scaleFramePerserveAR(frame);
 		frames.push_back(frame);
 	}
 }
