@@ -9,6 +9,8 @@
 #include <Python.h>
 #include <vector>
 #include "Utils.h"
+#include <boost/python.hpp>
+using namespace boost::python;
 using namespace std;
 using namespace cv;
 using namespace cv::gpu;
@@ -21,23 +23,23 @@ class LazyLoader {
 	VideoCapture capture;
 	std::list<Mat> frames;
 	std::list<Mat> flows;
+
 	uint batchSize;
 	uint temporalWindow;
 	
 	uint frameCount;
+	uint batchToLoad;
 
-	void initFramesLazy(const uint batchSize, const uint temporalWindow);
+	void initFramesLazy();
 	void initFlowLazy();
 
-	void createBatch(const uint batchSize, const uint temporalWindow);
+	void createBatch();
 	void appendFrame(Mat& mat, const uint count);
 public:
 	LazyLoader() : capture() {}
 	~LazyLoader() { capture.release(); }
 
 	void initializeLazy(const char* videoFile, const uint batchSize, const uint temporalWindow);
-	//np::ndarray getFrames(int batchSize, int temporalWindow);
-	//np::ndarray getOpticalFlows(float bound, int batchSize, int temporalWindow);
 	
 	bool hasNextBatch();
 	np::ndarray nextBatchFrames();

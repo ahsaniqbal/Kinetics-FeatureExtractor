@@ -1,6 +1,4 @@
 #include "PreProcessor.h"
-#include <boost/python.hpp>
-using namespace boost::python;
 
 void PreProcessor::initialize(const char* video) {
 	frames.clear();
@@ -135,9 +133,3 @@ np::ndarray PreProcessor::getFrames() {
 	return resultFrames;
 }
 
-BOOST_PYTHON_MODULE(libPreProcessor) {
-	class_<PreProcessor>("PreProcessor")
-		.def("initialize", &PreProcessor::initialize)
-		.def("getOpticalFlows", &PreProcessor::getOpticalFlows)
-		.def("getFrames", &PreProcessor::getFrames);
-}

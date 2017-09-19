@@ -25,7 +25,7 @@ enum SmallerDimension { row, col };
 
 class Utils {
 public:
-	static void calculateOpticalFlow(const Mat& previous, const Mat& current, Mat& flowU, Mat& flowV);
+	static void calculateOpticalFlow(const Mat& previous, const Mat& current, Mat& result);
 	static SmallerDimension getSmallerDimension(const Mat& frame);
 	static void scaleFramePerserveAR(Mat& frame);
 

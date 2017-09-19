@@ -9,6 +9,8 @@
 #include <Python.h>
 #include <vector>
 #include "Utils.h"
+#include <boost/python.hpp>
+using namespace boost::python;
 using namespace std;
 using namespace cv;
 using namespace cv::gpu;

@@ -1,15 +1,23 @@
 #include "Utils.h"
 
-void Utils::calculateOpticalFlow(const Mat& previous, const Mat& current, Mat& flowU, Mat& flowV) {
+void Utils::calculateOpticalFlow(const Mat& previous, const Mat& current, Mat& result) {
 	setDevice(0);
 	OpticalFlowDual_TVL1_GPU alg_tvl1;
-	
+
+	Mat flowU, flowV;
 	GpuMat current_d, previous_d, flowU_d, flowV_d;
 	current_d.upload(current);
 	previous_d.upload(previous);
+
 	alg_tvl1(previous_d, current_d, flowU_d, flowV_d);
 	flowU_d.download(flowU);
 	flowV_d.download(flowV);		
+
+	std::vector<Mat> channels;
+	channels.push_back(flowU);
+	channels.push_back(flowV);
+
+	merge(channels, result);
 }
 
 SmallerDimension Utils::getSmallerDimension(const Mat& frame) {
@@ -49,7 +57,7 @@ np::ndarray Utils::convertRGBFramesToNPArray(const std::list<Mat>& frames, uint 
 		std::list<Mat>::const_iterator start = frames.begin();
 		std::advance(start, i);
 		std::list<Mat>::const_iterator end = frames.begin();
-		std::advance(end, i + 1 + temporalWindow);
+		std::advance(end, i + temporalWindow);
 
 		uint j=0;
 		for(std::list<Mat>::const_iterator it=start; it != end; ++it, j++) {
@@ -57,7 +65,7 @@ np::ndarray Utils::convertRGBFramesToNPArray(const std::list<Mat>& frames, uint 
 			for (uint k=0; k<height; k++) {
 				Vec3b *row = roi.ptr<Vec3b>(k);
 				for (uint l=0; l<width; l++) {
-					uint index = i * (temporalWindow + 1) * height * width * 3 + j * height * width * 3 + k * width * 3 + l * 3;
+					uint index = i * temporalWindow * height * width * 3 + j * height * width * 3 + k * width * 3 + l * 3;
 					resultData[index + 0] = ((float)row[l].val[2] - 127.5f) / 127.5f;
 					resultData[index + 1] = ((float)row[l].val[1] - 127.5f) / 127.5f;
 					resultData[index + 2] = ((float)row[l].val[0] - 127.5f) / 127.5f;					
@@ -87,19 +95,17 @@ np::ndarray Utils::convertOpticalFlowsToNPArray(const std::list<Mat>& flows, uin
 		std::list<Mat>::const_iterator start = flows.begin();
 		std::advance(start, i);
 		std::list<Mat>::const_iterator end = flows.begin();
-		std::advance(end, i + 1 + temporalWindow);
+		std::advance(end, i + temporalWindow);
+
 		uint j=0;
-		for (std::list<Mat>::const_iterator it = flows.begin(); it != end; j+=2) {
+		for (std::list<Mat>::const_iterator it = start; it != end; ++it, j++) {
 			Mat roiU = (*it)(rec);
-			std::advance(it, 1);
-			Mat roiV = (*it)(rec);
 			for (uint k=0; k<height; k++) {
-				float *rowU = roiU.ptr<float>(k);
-				float *rowV = roiV.ptr<float>(k);
+				Vec2f* row = roiU.ptr<Vec2f>(k);
 				for (uint l=0; l<width; l++) {
-					uint index = i * (temporalWindow + 1) * height * width * 2 + (j/2) * height * width * 2 + k * width * 2 + l * 2;
-					resultData[index + 0] = CAST(rowU[l], -bound, bound) / bound;
-					resultData[index + 1] = CAST(rowV[l], -bound, bound) / bound;					
+					uint index = i * temporalWindow * height * width * 2 + j * height * width * 2 + k * width * 2 + l * 2;
+					resultData[index + 0] = CAST(row[l].val[0], -bound, bound) / bound;
+					resultData[index + 1] = CAST(row[l].val[1], -bound, bound) / bound;					
 				}
 			}
 		}
