@@ -17,122 +17,122 @@ _IMAGE_SIZE = 224
 _NUM_CLASSES = 400
 
 class Video:
-	def __init__(self, file_name, temporal_window, batch_size, clip_optical_flow_at):
-		self.file_name = file_name
-		self.temporal_window = temporal_window
-		self.batch_size = batch_size
-		self.rgb_data = []
-		self.flow_data = []
-		self.batch_id = 0
-		self.clip_optical_flow_at=int(clip_optical_flow_at)
-		self.features = np.array([])
-		self.loader = libCppInterface.LazyLoader()
-		self.loader.initializeLazy(self.file_name, self.batch_size, self.temporal_window)
+    def __init__(self, file_name, temporal_window, batch_size, clip_optical_flow_at):
+        self.file_name = file_name
+        self.temporal_window = temporal_window
+        self.batch_size = batch_size
+        self.rgb_data = []
+        self.flow_data = []
+        self.batch_id = 0
+        self.clip_optical_flow_at=int(clip_optical_flow_at)
+        self.features = [] #np.array([])
+        self.loader = libCppInterface.LazyLoader()
+        self.loader.initializeLazy(self.file_name, self.batch_size, self.temporal_window)
 
-	def has_data(self):
-		return self.loader.hasNextBatch()
+    def has_data(self):
+        return self.loader.hasNextBatch()
 
-	def get_batch(self):
-		if self.loader.hasNextBatch():
-			result_rgb = self.loader.nextBatchFrames()
-			result_flow = self.loader.nextBatchFlows()
-			return result_rgb, result_flow
-		else:
-			return None, None
+    def get_batch(self):
+        if self.loader.hasNextBatch():
+            result_rgb = self.loader.nextBatchFrames()
+            result_flow = self.loader.nextBatchFlows()
+            return result_rgb, result_flow
+        else:
+            return None, None
 
-	def append_feature(self, rgb_features, flow_features):
-		if len(self.features) == 0:
-			self.features = np.concatenate([rgb_features, flow_features], axis=1)
-		else:
-			self.features = np.vstack([self.features, np.concatenate([rgb_features, flow_features], axis=1)])
+    def append_feature(self, rgb_features, flow_features):
+        for i in range(rgb_features.shape[0]):
+            self.features.append( np.concatenate([rgb_features[i,:], flow_features[i,:]]) )
 
-	def finalize(self, dest_path):
-		print(dest_path)
-		np.save(osp.join(dest_path, self.file_name[self.file_name.rfind('/')+1:]), self.features)
+    def finalize(self, dest_path):
+        print(dest_path)
+        data = np.array( self.features )
+        print(data.shape)
+        np.save(osp.join(dest_path, self.file_name[self.file_name.rfind('/')+1:]), data)
 
 
 @begin.start
 def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts=''):
-	if base_path_to_chk_pts=='' or dest_path=='':
-		raise Exception('Please provide path to the model checkpoints and to the destination features')
+    if base_path_to_chk_pts=='' or dest_path=='':
+        raise Exception('Please provide path to the model checkpoints and to the destination features')
 
-	_CHECKPOINT_PATHS = {
-	    'rgb': osp.join(base_path_to_chk_pts, 'rgb_scratch/model.ckpt'),
-	    'flow': osp.join(base_path_to_chk_pts, 'flow_scratch/model.ckpt'),
-	    'rgb_imagenet': osp.join(base_path_to_chk_pts, 'rgb_imagenet/model.ckpt'),
-	    'flow_imagenet': osp.join(base_path_to_chk_pts, 'flow_imagenet/model.ckpt'),
-	}
+    _CHECKPOINT_PATHS = {
+        'rgb': osp.join(base_path_to_chk_pts, 'rgb_scratch/model.ckpt'),
+        'flow': osp.join(base_path_to_chk_pts, 'flow_scratch/model.ckpt'),
+        'rgb_imagenet': osp.join(base_path_to_chk_pts, 'rgb_imagenet/model.ckpt'),
+        'flow_imagenet': osp.join(base_path_to_chk_pts, 'flow_imagenet/model.ckpt'),
+    }
 
-	FLAGS = tf.flags.FLAGS
-	tf.flags.DEFINE_string('eval_type', 'joint', 'rgb, flow, or joint')
-	tf.flags.DEFINE_boolean('imagenet_pretrained', True, '')
+    FLAGS = tf.flags.FLAGS
+    tf.flags.DEFINE_string('eval_type', 'joint', 'rgb, flow, or joint')
+    tf.flags.DEFINE_boolean('imagenet_pretrained', True, '')
 
-	tf.logging.set_verbosity(tf.logging.INFO)
-	eval_type = FLAGS.eval_type
-	imagenet_pretrained = FLAGS.imagenet_pretrained	
+    tf.logging.set_verbosity(tf.logging.INFO)
+    eval_type = FLAGS.eval_type
+    imagenet_pretrained = FLAGS.imagenet_pretrained    
 
-	temporal_window = int(temporal_window)
-	temporal_window += 0 if temporal_window % 2 == 1 else 1
+    temporal_window = int(temporal_window)
+    temporal_window += 0 if temporal_window % 2 == 1 else 1
 
-	batch_size = int(batch_size)
+    batch_size = int(batch_size)
 
-	#define input size
-	rgb_input = tf.placeholder(tf.float32, shape=(None, temporal_window, _IMAGE_SIZE, _IMAGE_SIZE, 3))
-	flow_input = tf.placeholder(tf.float32, shape=(None, temporal_window, _IMAGE_SIZE, _IMAGE_SIZE, 2))
-	##################
+    #define input size
+    rgb_input = tf.placeholder(tf.float32, shape=(None, temporal_window, _IMAGE_SIZE, _IMAGE_SIZE, 3))
+    flow_input = tf.placeholder(tf.float32, shape=(None, temporal_window, _IMAGE_SIZE, _IMAGE_SIZE, 2))
+    ##################
 
-	#load models 
-	with tf.variable_scope('RGB'):
-		rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
-		rgb_mixed_5c, _ = rgb_model(rgb_input, is_training=False, dropout_keep_prob=1.0)
-	rgb_variable_map = {}
-	for variable in tf.global_variables():
-		if variable.name.split('/')[0] == 'RGB':
-			rgb_variable_map[variable.name.replace(':0', '')] = variable
-	rgb_saver = tf.train.Saver(var_list=rgb_variable_map, reshape=True)
+    #load models 
+    with tf.variable_scope('RGB'):
+        rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
+        rgb_mixed_5c, _ = rgb_model(rgb_input, is_training=False, dropout_keep_prob=1.0)
+    rgb_variable_map = {}
+    for variable in tf.global_variables():
+        if variable.name.split('/')[0] == 'RGB':
+            rgb_variable_map[variable.name.replace(':0', '')] = variable
+    rgb_saver = tf.train.Saver(var_list=rgb_variable_map, reshape=True)
 
-	with tf.variable_scope('Flow'):
-		flow_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
-		flow_mixed_5c, _ = flow_model(flow_input, is_training=False, dropout_keep_prob=1.0)
-	flow_variable_map = {}
-	for variable in tf.global_variables():
-		if variable.name.split('/')[0] == 'Flow':
-			flow_variable_map[variable.name.replace(':0', '')] = variable
-	flow_saver = tf.train.Saver(var_list=flow_variable_map, reshape=True)
-	################
-
-
-	##adds few avg pooling operations 
-	rgb_avg_pool = tf.nn.avg_pool3d(rgb_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
-	flow_avg_pool = tf.nn.avg_pool3d(flow_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
-
-	rgb_avg_pool = tf.squeeze(rgb_avg_pool, [2, 3])
-	flow_avg_pool = tf.squeeze(flow_avg_pool, [2, 3])
-
-	rgb_final = tf.reduce_mean(rgb_avg_pool, axis=1)
-	flow_final = tf.reduce_mean(flow_avg_pool, axis=1)
-	########################
+    with tf.variable_scope('Flow'):
+        flow_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
+        flow_mixed_5c, _ = flow_model(flow_input, is_training=False, dropout_keep_prob=1.0)
+    flow_variable_map = {}
+    for variable in tf.global_variables():
+        if variable.name.split('/')[0] == 'Flow':
+            flow_variable_map[variable.name.replace(':0', '')] = variable
+    flow_saver = tf.train.Saver(var_list=flow_variable_map, reshape=True)
+    ################
 
 
-	with tf.Session() as sess:
-		feed_dict = {}
-		rgb_saver.restore(sess, _CHECKPOINT_PATHS['rgb_imagenet'])
-		flow_saver.restore(sess, _CHECKPOINT_PATHS['flow_imagenet'])
+    ##adds few avg pooling operations 
+    rgb_avg_pool = tf.nn.avg_pool3d(rgb_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
+    flow_avg_pool = tf.nn.avg_pool3d(flow_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
 
-		start = timeit.default_timer()
-		for vid in videos:
-			try:
-				print(vid)
-				v = Video(vid, temporal_window, batch_size, clip_optical_flow_at)
-							
-				while v.has_data():			
-					rgb, flow = v.get_batch()
-					feed_dict[rgb_input] = rgb
-					feed_dict[flow_input] = flow
-					rgb_features, flow_features = sess.run([rgb_final, flow_final], feed_dict=feed_dict)
-					v.append_feature(rgb_features, flow_features)
-				v.finalize(dest_path)
-			except Exception as e:
-				print(str(e))
-		stop = timeit.default_timer()
-		print(stop-start)
+    rgb_avg_pool = tf.squeeze(rgb_avg_pool, [2, 3])
+    flow_avg_pool = tf.squeeze(flow_avg_pool, [2, 3])
+
+    rgb_final = tf.reduce_mean(rgb_avg_pool, axis=1)
+    flow_final = tf.reduce_mean(flow_avg_pool, axis=1)
+    ########################
+
+
+    with tf.Session() as sess:
+        feed_dict = {}
+        rgb_saver.restore(sess, _CHECKPOINT_PATHS['rgb_imagenet'])
+        flow_saver.restore(sess, _CHECKPOINT_PATHS['flow_imagenet'])
+
+        start = timeit.default_timer()
+        for vid in videos:
+            try:
+                print(vid)
+                v = Video(vid, temporal_window, batch_size, clip_optical_flow_at)
+                            
+                while v.has_data():            
+                    rgb, flow = v.get_batch()
+                    feed_dict[rgb_input] = rgb
+                    feed_dict[flow_input] = flow
+                    rgb_features, flow_features = sess.run([rgb_final, flow_final], feed_dict=feed_dict)
+                    v.append_feature(rgb_features, flow_features)
+                v.finalize(dest_path)
+            except Exception as e:
+                print(str(e))
+        stop = timeit.default_timer()
+        print(stop-start)
