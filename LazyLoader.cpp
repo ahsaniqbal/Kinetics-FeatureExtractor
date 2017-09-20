@@ -39,10 +39,10 @@ void LazyLoader::initFramesLazy() {
 	}
 
 	uint temporalWindowHalf = temporalWindow / 2;
-	Mat frame;
 	
 	//+1 to make sure that the size of optical flow volume is same for complete batch
 	for (uint i=0; i<batchSize+(temporalWindowHalf)+1; i++) {
+		Mat frame;
 		capture>>frame;
 		if (frame.empty()) {
 			if (i==0) {
@@ -52,28 +52,29 @@ void LazyLoader::initFramesLazy() {
 			break;
 		}
 		Utils::scaleFramePerserveAR(frame);
-		frames.push_back(frame.clone());
+		frames.push_back(frame);
 	}
 	//appending the first frame, to make sure that for each frame we have half temporal window on either side
 	for (uint i=0; i<temporalWindowHalf; i++) {
-		frames.push_front(frames.front().clone());
+		frames.push_front(frames.front());
 	}
 	//+1 to make sure that the size of optical flow volume is same for complete batch
 	while(frames.size() != std::min(batchSize + temporalWindow, frameCount + temporalWindow) + 1) {
-		frames.push_back(frames.back().clone());
+		frames.push_back(frames.back());
 	}
 }
 
 void LazyLoader::initFlowLazy() {
-	Mat previous, current, flow;
+	Mat previous, current;
 	for (std::list<Mat>::iterator it=frames.begin(); it != frames.end(); ++it) {
+		Mat flow;
 		if (it == frames.begin()) {
 			cvtColor(*it, previous, CV_BGR2GRAY);
 			continue;
 		}
 		cvtColor(*it, current, CV_BGR2GRAY);
 		Utils::calculateOpticalFlow(previous, current, flow);
-		flows.push_back(flow.clone());
+		flows.push_back(flow);
 		std::swap(previous, current);
 	}
 }
@@ -88,10 +89,10 @@ np::ndarray LazyLoader::nextBatchFrames() {
 	}
 
 	if (frameCount > 0) {
-		Mat frame, flow;
 		Mat prevGray, currGray;
 		cvtColor(frames.back(), prevGray, CV_BGR2GRAY);
 		for (uint i=0; i<batchSize; i++) {
+			Mat frame, flow;
 			capture>>frame;
 			if (frame.empty()) {
 				break;
@@ -100,14 +101,14 @@ np::ndarray LazyLoader::nextBatchFrames() {
 			cvtColor(frame, currGray, CV_BGR2GRAY);
 			
 			Utils::calculateOpticalFlow(prevGray, currGray, flow);
-			frames.push_back(frame.clone());
-			flows.push_back(flow.clone());
+			frames.push_back(frame);
+			flows.push_back(flow);
 
 			std::swap(prevGray, currGray);
 		}
 
 		while(frames.size() != std::min(batchSize + temporalWindow, frameCount + temporalWindow)+1) {
-			frames.push_back(frames.back().clone());
+			frames.push_back(frames.back());
 			flows.push_back(Mat::zeros(flows.back().size(), flows.back().type()));
 		}
 	}

@@ -3,11 +3,14 @@ import os.path as osp
 import extractor_lazy
 import libCppInterface
 
+'''
 path = '/media/data/ActivityNet'
 
 vids = [osp.join(path, vid) for vid in os.listdir(path) if osp.isfile(osp.join(path, vid)) and vid.endswith('.mp4')]
+'''
 
-extractor_lazy.main(vids, temporal_window=20, batch_size=10, base_path_to_chk_pts='./data/checkpoints', dest_path='/media/data/ActivityNet_features')
+vids = ['/media/datasets/action_recognition/breakfast/Breakfast_Final/vid/P04/webcam02/P04_tea.avi']
+extractor_lazy.main(vids, temporal_window=20, batch_size=10, base_path_to_chk_pts='./data/checkpoints', dest_path='/home/ahsan/temp')
 
 '''
 print(len(vids))
