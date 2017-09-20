@@ -7,7 +7,7 @@ import tensorflow as tf
 
 import i3d
 
-import libPreProcessor
+import libCppInterface
 import os
 import os.path as osp
 import begin
@@ -21,51 +21,16 @@ class Video:
 		self.file_name = file_name
 		self.temporal_window = temporal_window
 		self.batch_size = batch_size
-		self.rgb_data = []
-		self.flow_data = []
-		self.batch_id = 0
 		self.clip_optical_flow_at=int(clip_optical_flow_at)
-		self.features = np.array([])
 
-	def generate_data(self):
-		preProcessor = libPreProcessor.PreProcessor()
+	def get_batch(self):
+		preProcessor = libCppInterface.PreProcessor()
 		preProcessor.initialize(self.file_name)
 
 		rgb = preProcessor.getFrames()
 		flow = preProcessor.getOpticalFlows(self.clip_optical_flow_at)
 
-		temporal_window_half = int(self.temporal_window/2)
-
-		rgb_append_before = np.tile(rgb[0], (temporal_window_half, 1, 1, 1))
-		rgb_append_after = np.tile(rgb[-1], (temporal_window_half, 1, 1, 1))
-
-		flow_append = np.tile(np.zeros((_IMAGE_SIZE, _IMAGE_SIZE, 2), dtype=np.float32), (temporal_window_half, 1, 1, 1))
-
-		rgb_updated = np.vstack([rgb_append_before, rgb[:-1], rgb_append_after])
-		flow_updated = np.vstack([flow_append, flow, flow_append])
-
-
-		for i in range(temporal_window_half, rgb_updated.shape[0] - temporal_window_half):
-			start = i - temporal_window_half
-			end = start + self.temporal_window
-			self.rgb_data.append(rgb_updated[start:end,:,:,:])
-			self.flow_data.append(flow_updated[start:end,:,:,:])
-
-		self.rgb_data = np.array(self.rgb_data)
-		self.flow_data = np.array(self.flow_data)	
-
-	def get_batch(self):
-		result_flow = None 
-		result_rgb = None 
-		more_data = False
-		start = self.batch_id * self.batch_size
-		end = min(start + self.batch_size, len(self.rgb_data))
-		if end < len(self.rgb_data):
-			more_data = True
-		result_rgb = self.rgb_data[start:end]
-		result_flow = self.flow_data[start:end]
-		self.batch_id += 1
-		return result_rgb, result_flow, more_data
+		return rgb, flow
 
 	def append_feature(self, rgb_features, flow_features):
 		if len(self.features) == 0:
@@ -73,9 +38,10 @@ class Video:
 		else:
 			self.features = np.vstack([self.features, np.concatenate([rgb_features, flow_features], axis=1)])
 
-	def finalize(self, dest_path):
+	def finalize(self, rgb_features, flow_features, dest_path):
 		print(dest_path)
-		np.save(osp.join(dest_path, self.file_name[self.file_name.rfind('/')+1:]), self.features)
+		features = np.concatenate([rgb_features, flow_features], axis=1)
+		np.save(osp.join(dest_path, self.file_name[self.file_name.rfind('/')+1:]), features)
 
 
 @begin.start
@@ -151,19 +117,14 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 			try:
 				print(vid)
 				v = Video(vid, temporal_window, batch_size, clip_optical_flow_at)
-				v.generate_data()
-								
+				rgb, flow = v.get_batch()		
 				
-				while True:			
-					rgb, flow, more = v.get_batch()
-					feed_dict[rgb_input] = rgb
-					feed_dict[flow_input] = flow
-					rgb_features, flow_features = sess.run([rgb_final, flow_final], feed_dict=feed_dict)
-					v.append_feature(rgb_features, flow_features)
+				feed_dict[rgb_input] = rgb
+				feed_dict[flow_input] = flow
+				
+				rgb_features, flow_features = sess.run([rgb_final, flow_final], feed_dict=feed_dict)
+				v.finalize(dest_path, rgb_features, flow_features)								
 
-					if more == False:
-						v.finalize(dest_path)
-						break
 			except Exception as e:
 				print(str(e))
 		stop = timeit.default_timer()
