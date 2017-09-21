@@ -39,8 +39,11 @@ class Video:
 		else:
 			self.features = np.vstack([self.features, np.concatenate([rgb_features, flow_features], axis=1)])
 
-	def finalize(self, rgb_features, flow_features, dest_path):
+	def finalize(self, dest_path, rgb_features, flow_features):
 		print(dest_path)
+		#print(rgb_features.shape)
+		rgb_features = np.reshape(rgb_features, (1, 1024))
+		flow_features = np.reshape(flow_features, (1, 1024))
 		features = np.concatenate([rgb_features, flow_features], axis=1)
 		np.save(osp.join(dest_path, self.file_name[self.file_name.rfind('/')+1:]), features)
 
