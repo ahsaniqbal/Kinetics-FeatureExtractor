@@ -17,10 +17,8 @@ _IMAGE_SIZE = 224
 _NUM_CLASSES = 400
 
 class Video:
-	def __init__(self, file_name, temporal_window, batch_size, clip_optical_flow_at):
+	def __init__(self, file_name, clip_optical_flow_at):
 		self.file_name = file_name
-		self.temporal_window = temporal_window
-		self.batch_size = batch_size
 		self.clip_optical_flow_at=int(clip_optical_flow_at)
 
 	def get_batch(self):
@@ -29,6 +27,9 @@ class Video:
 
 		rgb = preProcessor.getFrames()
 		flow = preProcessor.getOpticalFlows(self.clip_optical_flow_at)
+
+		rgb = np.reshape(rgb, (1, rgb.shape[0], _IMAGE_SIZE, _IMAGE_SIZE, 3))
+		flow = np.reshape(flow, (1, flow.shape[0], _IMAGE_SIZE, _IMAGE_SIZE, 2))
 
 		return rgb, flow
 
@@ -45,7 +46,7 @@ class Video:
 
 
 @begin.start
-def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts=''):
+def main(videos, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts=''):
 	if base_path_to_chk_pts=='' or dest_path=='':
 		raise Exception('Please provide path to the model checkpoints and to the destination features')
 
@@ -64,14 +65,10 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 	eval_type = FLAGS.eval_type
 	imagenet_pretrained = FLAGS.imagenet_pretrained	
 
-	temporal_window = int(temporal_window)
-	temporal_window += 0 if temporal_window % 2 == 1 else 1
-
-	batch_size = int(batch_size)
 
 	#define input size
-	rgb_input = tf.placeholder(tf.float32, shape=(None, temporal_window, _IMAGE_SIZE, _IMAGE_SIZE, 3))
-	flow_input = tf.placeholder(tf.float32, shape=(None, temporal_window, _IMAGE_SIZE, _IMAGE_SIZE, 2))
+	rgb_input = tf.placeholder(tf.float32, shape=(1, None, _IMAGE_SIZE, _IMAGE_SIZE, 3))
+	flow_input = tf.placeholder(tf.float32, shape=(1, None, _IMAGE_SIZE, _IMAGE_SIZE, 2))
 	##################
 
 	#load models 
@@ -116,7 +113,7 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 		for vid in videos:
 			try:
 				print(vid)
-				v = Video(vid, temporal_window, batch_size, clip_optical_flow_at)
+				v = Video(vid, clip_optical_flow_at)
 				rgb, flow = v.get_batch()		
 				
 				feed_dict[rgb_input] = rgb

@@ -1,33 +1,15 @@
 import os
 import os.path as osp
-import extractor_lazy
+import extractor
 import libCppInterface
 
-path = '/media/data/ActivityNet'
+path = '/media/datasets/action_recognition/kinetics/validation_new/'
+clss = [osp.join(path, cls) for cls in os.listdir(path) if osp.isdir(osp.join(path, cls))]
+vids = []
+for cls in clss:
+	vids += [osp.join(cls, vid) for vid in os.listdir(cls) if osp.isfile(osp.join(cls, vid)) and vid.endswith('.avi')]
 
-vids = [osp.join(path, vid) for vid in os.listdir(path) if osp.isfile(osp.join(path, vid)) and vid.endswith('.mp4')]
+print len(vids)
+vids = vids[:100]
 
-extractor_lazy.main(vids, temporal_window=20, batch_size=10, base_path_to_chk_pts='./data/checkpoints', dest_path='/media/data/ActivityNet_features')
-
-'''
-print(len(vids))
-
-print(vids[2])
-
-loader = libCppInterface.LazyLoader()
-#initializeLazy(const char* videoFile, const uint batchSize, const uint temporalWindow);
-
-for i in xrange(1):
-	loader.initializeLazy('/media/datasets/action_recognition/kinetics/validation_new/getting a haircut/U5wQ8PwwXFg.avi', 10, 21)	
-	j = 0
-	while loader.hasNextBatch():
-		frames = loader.nextBatchFrames()
-		#print('Frames Done::{0}'.format(i))
-		flows = loader.nextBatchFlows();
-		#print('Flows Done::{0}'.format(i))
-		print('{0}::Frames={1}::{2}'.format(i, frames.shape, j))
-		print('{0}::Flows={1}::{2}'.format(i, flows.shape, j))
-		j += 1
-
-#extractor.main(vids, temporal_window=20, batch_size=5, base_path_to_chk_pts='./data/checkpoints', dest_path='/media/data/ActivityNet_features')
-'''
+extractor.main(vids, base_path_to_chk_pts='./data/checkpoints', dest_path='/media/datasets/action_recognition/kinetics/validation_features')
