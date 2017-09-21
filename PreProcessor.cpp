@@ -29,7 +29,7 @@ void PreProcessor::populateFrames(const char* video) {
 		p::throw_error_already_set();
 	}
 
-	double fps = capture.get(CV_CAP_PROP_FPS);
+	//double fps = capture.get(CV_CAP_PROP_FPS);
 	int step = 1;
 	/*if (!std::isnan(fps) && fps > 25.0) {
 		step = (int)round(fps/25.0);
