@@ -31,9 +31,9 @@ void PreProcessor::populateFrames(const char* video) {
 
 	double fps = capture.get(CV_CAP_PROP_FPS);
 	int step = 1;
-	if (!std::isnan(fps) && fps > 25.0) {
+	/*if (!std::isnan(fps) && fps > 25.0) {
 		step = (int)round(fps/25.0);
-	}
+	}*/
 
 	Mat frame;
 	int frameNum = 0;
