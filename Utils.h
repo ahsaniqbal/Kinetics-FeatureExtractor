@@ -25,11 +25,20 @@ enum SmallerDimension { row, col };
 
 class Utils {
 public:
+	static void populateOpticalFlow(const std::list<Mat>& frames, std::list<Mat>& flows);
 	static void calculateOpticalFlow(const Mat& previous, const Mat& current, Mat& result);
 	static SmallerDimension getSmallerDimension(const Mat& frame);
-	static void scaleFramePerserveAR(Mat& frame);
+
+	static void scaleFramePerserveAR(const Mat& frame, Mat& result);
+	static void crop(const Mat& frame, Mat& result);
+
+	static void writeRGBFrame(const Mat& frame, float* array, uint startIndex);
+	static void writeFlowFrame(const Mat& frame, float* array, uint startIndex, float bound);
 
 	static np::ndarray convertRGBFramesToNPArray(const std::list<Mat>& frames, uint batchSize, uint temporalWindow);
 	static np::ndarray convertOpticalFlowsToNPArray(const std::list<Mat>& flows, uint batchSize, uint temporalWindow, float bound);
+
+	static np::ndarray convertRGBFramesToNPArray(const std::list<Mat>& frames);
+	static np::ndarray convertOpticalFlowsToNPArray(const std::list<Mat>& flows, float bound);
 };
 #endif

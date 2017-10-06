@@ -22,7 +22,7 @@ IF(Boost_FOUND)
   SET(Boost_USE_STATIC_RUNTIME OFF)
   FIND_PACKAGE(Boost ${BOOST_MIN_VERSION} COMPONENTS python numpy)
 
-  ADD_LIBRARY(CppInterface SHARED CppInterface.cpp PreProcessor.cpp Utils.cpp LazyLoader.cpp)
+  ADD_LIBRARY(CppInterface SHARED CppInterface.cpp ActiveLoader.cpp Utils.cpp LazyLoader.cpp)
   TARGET_LINK_LIBRARIES(CppInterface ${Boost_LIBRARIES}
 				  ${OpenCV_LIBS})
 ELSEIF(NOT Boost_FOUND)

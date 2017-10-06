@@ -51,7 +51,7 @@ void LazyLoader::initFramesLazy() {
 			}
 			break;
 		}
-		Utils::scaleFramePerserveAR(frame);
+		//Utils::scaleFramePerserveAR(frame);
 		frames.push_back(frame.clone());
 	}
 	//appending the first frame, to make sure that for each frame we have half temporal window on either side
@@ -65,17 +65,7 @@ void LazyLoader::initFramesLazy() {
 }
 
 void LazyLoader::initFlowLazy() {
-	Mat previous, current, flow;
-	for (std::list<Mat>::iterator it=frames.begin(); it != frames.end(); ++it) {
-		if (it == frames.begin()) {
-			cvtColor(*it, previous, CV_BGR2GRAY);
-			continue;
-		}
-		cvtColor(*it, current, CV_BGR2GRAY);
-		Utils::calculateOpticalFlow(previous, current, flow);
-		flows.push_back(flow.clone());
-		std::swap(previous, current);
-	}
+	Utils::populateOpticalFlow(frames, flows);
 }
 
 np::ndarray LazyLoader::nextBatchFrames() {
@@ -96,7 +86,7 @@ np::ndarray LazyLoader::nextBatchFrames() {
 			if (frame.empty()) {
 				break;
 			}
-			Utils::scaleFramePerserveAR(frame);
+			//Utils::scaleFramePerserveAR(frame);
 			cvtColor(frame, currGray, CV_BGR2GRAY);
 			
 			Utils::calculateOpticalFlow(prevGray, currGray, flow);

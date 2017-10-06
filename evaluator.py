@@ -7,9 +7,10 @@ import tensorflow as tf
 
 import i3d
 
-import libPreProcessor
+import libCppInterface
 import os
 import os.path as osp
+import random
 import begin
 
 _IMAGE_SIZE = 224
@@ -42,7 +43,8 @@ def main(path_to_videos='', path_to_labels='', base_path_to_chk_pts=''):
 		videos = [osp.join(path_to_videos, clss, vid) for vid in os.listdir(osp.join(path_to_videos, clss)) if osp.isfile(osp.join(path_to_videos, clss, vid)) and vid.endswith('.avi')]
 		for vid in videos:
 			video_data.append({'video':vid, 'label':kinetics_classes.index(clss)})
-
+	random.shuffle(video_data)
+	video_data = video_data[:50]
 	rgb_input = tf.placeholder(tf.float32, shape=(1, None, _IMAGE_SIZE, _IMAGE_SIZE, 3))
 	with tf.variable_scope('RGB'):
 		rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
@@ -67,7 +69,7 @@ def main(path_to_videos='', path_to_labels='', base_path_to_chk_pts=''):
 	model_logits = rgb_logits + flow_logits
 	model_predictions = tf.nn.softmax(model_logits)
 
-	preProcessor = libPreProcessor.PreProcessor()
+	preProcessor = libCppInterface.ActiveLoader()
 
 	with tf.Session() as sess:
 		feed_dict = {}
@@ -83,8 +85,10 @@ def main(path_to_videos='', path_to_labels='', base_path_to_chk_pts=''):
 				flow = preProcessor.getOpticalFlows(20.0)
 				rgb = preProcessor.getFrames()
 
-				flow = np.reshape(flow, (1, flow.shape[0], 224, 224, 2))
-				rgb = np.reshape(rgb, (1, rgb.shape[0], 224, 224, 3))
+				print('flow shape:{0}'.format(flow.shape))
+				print('rgb shape:{0}'.format(rgb.shape))
+				#flow = np.reshape(flow, (1, flow.shape[0], 224, 224, 2))
+				#rgb = np.reshape(rgb, (1, rgb.shape[0], 224, 224, 3))
 			except Exception as e:
 				print(str(e))
 				continue

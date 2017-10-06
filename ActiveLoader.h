@@ -17,20 +17,22 @@ using namespace cv::gpu;
 namespace p = boost::python;
 namespace np = boost::python::numpy;
 
-#ifndef _PREPROCESSOR_H_
-#define _PREPROCESSOR_H_
+#ifndef _ACTIVELOADER_H_
+#define _ACTIVELOADER_H_
 
-class PreProcessor {
+class ActiveLoader {
 private:
-	std::vector<Mat> frames;
-	std::vector<Mat> flows;
+	//std::vector<Mat> frames;
+	//std::vector<Mat> flows;
+	std::list<Mat> frames;
+	std::list<Mat> flows;
 
 	void populateFrames(const char* video);
 	void populateOpticalFlows();
 	
 public:
-	PreProcessor() {}
-	~PreProcessor() { }
+	ActiveLoader() {}
+	~ActiveLoader() { }
 	void initialize(const char* videoFile);
 
 	np::ndarray getOpticalFlows(float bound);

@@ -1,11 +1,11 @@
-#include "PreProcessor.h"
+#include "ActiveLoader.h"
 #include "LazyLoader.h"
 
 BOOST_PYTHON_MODULE(libCppInterface) {
-	class_<PreProcessor>("PreProcessor")
-		.def("initialize", &PreProcessor::initialize)
-		.def("getOpticalFlows", &PreProcessor::getOpticalFlows)
-		.def("getFrames", &PreProcessor::getFrames);
+	class_<ActiveLoader>("ActiveLoader")
+		.def("initialize", &ActiveLoader::initialize)
+		.def("getOpticalFlows", &ActiveLoader::getOpticalFlows)
+		.def("getFrames", &ActiveLoader::getFrames);
 
 	class_<LazyLoader>("LazyLoader")
 		.def("initializeLazy", &LazyLoader::initializeLazy)

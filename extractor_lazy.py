@@ -83,8 +83,8 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 
     #load models 
     with tf.variable_scope('RGB'):
-        rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
-        rgb_mixed_5c, _ = rgb_model(rgb_input, is_training=False, dropout_keep_prob=1.0)
+        rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
+        rgb_logits, _ = rgb_model(rgb_input, is_training=False, dropout_keep_prob=1.0)
     rgb_variable_map = {}
     for variable in tf.global_variables():
         if variable.name.split('/')[0] == 'RGB':
@@ -92,8 +92,8 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
     rgb_saver = tf.train.Saver(var_list=rgb_variable_map, reshape=True)
 
     with tf.variable_scope('Flow'):
-        flow_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
-        flow_mixed_5c, _ = flow_model(flow_input, is_training=False, dropout_keep_prob=1.0)
+        flow_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
+        flow_logits, _ = flow_model(flow_input, is_training=False, dropout_keep_prob=1.0)
     flow_variable_map = {}
     for variable in tf.global_variables():
         if variable.name.split('/')[0] == 'Flow':
@@ -103,6 +103,7 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 
 
     ##adds few avg pooling operations 
+    '''
     rgb_avg_pool = tf.nn.avg_pool3d(rgb_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
     flow_avg_pool = tf.nn.avg_pool3d(flow_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
 
@@ -111,6 +112,7 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 
     rgb_final = tf.reduce_mean(rgb_avg_pool, axis=1)
     flow_final = tf.reduce_mean(flow_avg_pool, axis=1)
+    '''
     ########################
 
 
@@ -129,7 +131,7 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
                     rgb, flow = v.get_batch()
                     feed_dict[rgb_input] = rgb
                     feed_dict[flow_input] = flow
-                    rgb_features, flow_features = sess.run([rgb_final, flow_final], feed_dict=feed_dict)
+                    rgb_features, flow_features = sess.run([rgb_logits, flow_logits], feed_dict=feed_dict)
                     v.append_feature(rgb_features, flow_features)
                 v.finalize(dest_path)
             except Exception as e:
