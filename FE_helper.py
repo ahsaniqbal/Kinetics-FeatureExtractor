@@ -4,13 +4,15 @@ import extractor
 import extractor_lazy
 import libCppInterface
 
-path = '/media/data/ActivityNet'
-dest_path = '/media/data/ActivityNet_features'
-data = [osp.join(path, f) for f in os.listdir(path) if osp.isfile(osp.join(path, f)) and f.endswith('.mp4')]
+path = '/media/data/validation_new'
+dest_path = '/media/data/validation_features'
 
-data = data[:3]
-print data
-extractor_lazy.main(data, temporal_window=21, batch_size=5, dest_path=dest_path, base_path_to_chk_pts='./data/checkpoints')
+classes = [osp.join(path, clss) for clss in os.listdir(path) if osp.isdir(osp.join(path, clss))]
+videos = []
+for clss in classes:
+	videos += [osp.join(clss, vid) for vid in os.listdir(clss) if osp.isfile(osp.join(clss, vid)) and vid.endswith('.avi')]
+
+extractor.main(videos, dest_path=dest_path, base_path_to_chk_pts='./data/checkpoints')
 
 
 
