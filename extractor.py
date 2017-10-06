@@ -28,6 +28,9 @@ class Video:
 		rgb = preProcessor.getFrames()
 		flow = preProcessor.getOpticalFlows(self.clip_optical_flow_at)
 
+		if rgb.shape[0]<10:
+			raise Exception('Video is very small')
+
 		rgb = np.reshape(rgb, (1, rgb.shape[0], _IMAGE_SIZE, _IMAGE_SIZE, 3))
 		flow = np.reshape(flow, (1, flow.shape[0], _IMAGE_SIZE, _IMAGE_SIZE, 2))
 
@@ -117,7 +120,8 @@ def main(videos, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='')
 			try:
 				print(vid)
 				v = Video(vid, clip_optical_flow_at)
-				rgb, flow = v.get_batch()		
+				rgb, flow = v.get_batch()
+				print('RgbShape:{0}::FlowShape:{1}'.format(rgb.shape, flow.shape))	
 				
 				feed_dict[rgb_input] = rgb
 				feed_dict[flow_input] = flow
