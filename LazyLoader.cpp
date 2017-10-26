@@ -58,8 +58,8 @@ void LazyLoader::initFramesLazy() {
 	for (uint i=0; i<temporalWindowHalf; i++) {
 		frames.push_front(frames.front().clone());
 	}
-	//+1 to make sure that the size of optical flow volume is same for complete batch
-	while(frames.size() != std::min(batchSize + temporalWindow, frameCount + temporalWindow) + 1) {
+	//to make sure that the size of optical flow volume is same for complete batch
+	while(frames.size() < std::min(batchSize + temporalWindow, frameCount + temporalWindow)) {
 		frames.push_back(frames.back().clone());
 	}
 }
@@ -96,7 +96,7 @@ np::ndarray LazyLoader::nextBatchFrames() {
 			std::swap(prevGray, currGray);
 		}
 
-		while(frames.size() != std::min(batchSize + temporalWindow, frameCount + temporalWindow)+1) {
+		while(frames.size() < std::min(batchSize + temporalWindow, frameCount + temporalWindow)+1) {
 			frames.push_back(frames.back().clone());
 			flows.push_back(Mat::zeros(flows.back().size(), flows.back().type()));
 		}
