@@ -28,7 +28,7 @@ class Video:
 		rgb = loader.getFrames()
 		flow = loader.getOpticalFlows(self.clip_optical_flow_at)
 
-		if rgb.shape[0]<10:
+		if rgb.shape[1]<10:
 			raise Exception('Video is very small')
 
 		#rgb = np.reshape(rgb, (1, rgb.shape[0], _IMAGE_SIZE, _IMAGE_SIZE, 3))
@@ -42,6 +42,11 @@ class Video:
 		else:
 			self.features = np.vstack([self.features, np.concatenate([rgb_features, flow_features], axis=1)])
 
+	def write_flow(self, dest_path, flow_tensor):
+		np.save(osp.join(dest_path, 'flow', self.file_name[self.file_name.rfind('/')+1:]), flow_tensor)
+
+	def write_rgb(self, dest_path, rgb_tensor):
+		np.save(osp.join(dest_path, 'rgb', self.file_name[self.file_name.rfind('/')+1:]), rgb_tensor)
 
 	def finalize(self, dest_path, rgb_features, flow_features):
 		print(dest_path)
@@ -80,8 +85,8 @@ def main(videos, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='')
 
 	#load models 
 	with tf.variable_scope('RGB'):
-		rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
-		rgb_logits, _ = rgb_model(rgb_input, is_training=False, dropout_keep_prob=1.0)
+		rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
+		rgb_mixed_5c, _ = rgb_model(rgb_input, is_training=False, dropout_keep_prob=1.0)
 	rgb_variable_map = {}
 	for variable in tf.global_variables():
 		if variable.name.split('/')[0] == 'RGB':
@@ -89,8 +94,8 @@ def main(videos, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='')
 	rgb_saver = tf.train.Saver(var_list=rgb_variable_map, reshape=True)
 
 	with tf.variable_scope('Flow'):
-		flow_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
-		flow_logits, _ = flow_model(flow_input, is_training=False, dropout_keep_prob=1.0)
+		flow_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
+		flow_mixed_5c, _ = flow_model(flow_input, is_training=False, dropout_keep_prob=1.0)
 	flow_variable_map = {}
 	for variable in tf.global_variables():
 		if variable.name.split('/')[0] == 'Flow':
@@ -100,16 +105,16 @@ def main(videos, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='')
 
 
 	##adds few avg pooling operations 
-	'''
+	
 	rgb_avg_pool = tf.nn.avg_pool3d(rgb_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
 	flow_avg_pool = tf.nn.avg_pool3d(flow_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
 
-	rgb_avg_pool = tf.squeeze(rgb_avg_pool, [2, 3])
-	flow_avg_pool = tf.squeeze(flow_avg_pool, [2, 3])
+	#rgb_avg_pool = tf.squeeze(rgb_avg_pool, [2, 3])
+	#flow_avg_pool = tf.squeeze(flow_avg_pool, [2, 3])
 
-	rgb_final = tf.reduce_mean(rgb_avg_pool, axis=1)
-	flow_final = tf.reduce_mean(flow_avg_pool, axis=1)
-	'''
+	#rgb_final = tf.reduce_mean(rgb_avg_pool, axis=1)
+	#flow_final = tf.reduce_mean(flow_avg_pool, axis=1)
+	
 	########################
 
 
@@ -129,8 +134,10 @@ def main(videos, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='')
 				feed_dict[rgb_input] = rgb
 				feed_dict[flow_input] = flow
 				
-				rgb_features, flow_features = sess.run([rgb_logits, flow_logits], feed_dict=feed_dict)
-				v.finalize(dest_path, rgb_features, flow_features)								
+				rgb_features, flow_features = sess.run([rgb_avg_pool, flow_avg_pool], feed_dict=feed_dict)
+				v.write_flow(dest_path, flow_features)
+				v.write_rgb(dest_path, rgb_features)
+				#v.finalize(dest_path, rgb_features, flow_features)								
 
 			except Exception as e:
 				print(str(e))

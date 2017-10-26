@@ -4,8 +4,8 @@ import extractor
 import extractor_lazy
 import libCppInterface
 
-path = '/media/data/validation_new'
-dest_path = '/media/data/validation_features'
+path = '/media/datasets/action_recognition/kinetics/validation_new'
+dest_path = '/media/data/Kinetics/tensor_features'
 
 classes = [osp.join(path, clss) for clss in os.listdir(path) if osp.isdir(osp.join(path, clss))]
 videos = []
