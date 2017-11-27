@@ -63,6 +63,7 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
         'flow_imagenet': osp.join(base_path_to_chk_pts, 'flow_imagenet/model.ckpt'),
     }
 
+
     FLAGS = tf.flags.FLAGS
     tf.flags.DEFINE_string('eval_type', 'joint', 'rgb, flow, or joint')
     tf.flags.DEFINE_boolean('imagenet_pretrained', True, '')
@@ -77,9 +78,13 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
     batch_size = int(batch_size)
 
     #define input size
-    rgb_input = tf.placeholder(tf.float32, shape=(None, temporal_window, _IMAGE_SIZE, _IMAGE_SIZE, 3))
-    flow_input = tf.placeholder(tf.float32, shape=(None, temporal_window, _IMAGE_SIZE, _IMAGE_SIZE, 2))
+    rgb_input = tf.placeholder(tf.float32, shape=(None, None, _IMAGE_SIZE, _IMAGE_SIZE, 3))
+    flow_input = tf.placeholder(tf.float32, shape=(None, None, _IMAGE_SIZE, _IMAGE_SIZE, 2))
     ##################
+
+    print('***********************')
+    print('SIZE DEFINED')
+    print('***********************')
 
     #load models 
     with tf.variable_scope('RGB'):
@@ -100,6 +105,10 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
             flow_variable_map[variable.name.replace(':0', '')] = variable
     flow_saver = tf.train.Saver(var_list=flow_variable_map, reshape=True)
     ################
+
+    print('***********************')
+    print('Models Loaded')
+    print('***********************')
 
 
     ##adds few avg pooling operations 

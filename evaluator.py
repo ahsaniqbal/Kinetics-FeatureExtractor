@@ -44,7 +44,7 @@ def main(path_to_videos='', path_to_labels='', base_path_to_chk_pts=''):
 		for vid in videos:
 			video_data.append({'video':vid, 'label':kinetics_classes.index(clss)})
 	random.shuffle(video_data)
-	video_data = video_data[:50]
+	#video_data = video_data[:50]
 	rgb_input = tf.placeholder(tf.float32, shape=(1, None, _IMAGE_SIZE, _IMAGE_SIZE, 3))
 	with tf.variable_scope('RGB'):
 		rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
@@ -84,6 +84,8 @@ def main(path_to_videos='', path_to_labels='', base_path_to_chk_pts=''):
 				preProcessor.initialize(vid['video'])
 				flow = preProcessor.getOpticalFlows(20.0)
 				rgb = preProcessor.getFrames()
+				if rgb.shape[1]<10:
+					continue
 
 				print('flow shape:{0}'.format(flow.shape))
 				print('rgb shape:{0}'.format(rgb.shape))

@@ -58,7 +58,7 @@ void LazyLoader::initFramesLazy() {
 	for (uint i=0; i<temporalWindowHalf; i++) {
 		frames.push_front(frames.front().clone());
 	}
-	//to make sure that the size of optical flow volume is same for complete batch
+	
 	while(frames.size() < std::min(batchSize + temporalWindow, frameCount + temporalWindow)) {
 		frames.push_back(frames.back().clone());
 	}
