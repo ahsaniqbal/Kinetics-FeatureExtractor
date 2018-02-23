@@ -36,7 +36,7 @@ class Video:
     def get_batch(self):
         if self.loader.hasNextBatch():
             result_rgb = self.loader.nextBatchFrames()
-            if !self.is_only_for_rgb:
+            if not self.is_only_for_rgb:
                 result_flow = self.loader.nextBatchFlows()
                 return result_rgb, result_flow
             else:
@@ -59,7 +59,7 @@ class Video:
 
 
 @begin.start
-def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='', is_only_for_rgb):
+def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='', is_only_for_rgb=0):
     is_only_for_rgb = bool(is_only_for_rgb)
     if base_path_to_chk_pts=='' or dest_path=='':
         raise Exception('Please provide path to the model checkpoints and to the destination features')
@@ -104,7 +104,7 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
             rgb_variable_map[variable.name.replace(':0', '')] = variable
     rgb_saver = tf.train.Saver(var_list=rgb_variable_map, reshape=True)
 
-    if !is_only_for_rgb:
+    if not is_only_for_rgb:
         with tf.variable_scope('Flow'):
             flow_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
             flow_logits, _ = flow_model(flow_input, is_training=False, dropout_keep_prob=1.0)
@@ -138,7 +138,7 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
     with tf.Session() as sess:
         feed_dict = {}
         rgb_saver.restore(sess, _CHECKPOINT_PATHS['rgb_imagenet'])
-        if !is_only_for_rgb:
+        if not is_only_for_rgb:
             flow_saver.restore(sess, _CHECKPOINT_PATHS['flow_imagenet'])
 
         start = timeit.default_timer()
@@ -150,7 +150,7 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
                 while v.has_data():            
                     rgb, flow = v.get_batch()
                     feed_dict[rgb_input] = rgb
-                    if !is_only_for_rgb:
+                    if not is_only_for_rgb:
                         feed_dict[flow_input] = flow
                         rgb_features, flow_features = sess.run([rgb_logits, flow_logits], feed_dict=feed_dict)
                         v.append_feature(rgb_features, flow_features)
