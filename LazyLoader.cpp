@@ -20,7 +20,9 @@ void LazyLoader::initializeLazy(const char* video, const uint batchSize, const u
 
 void LazyLoader::createBatch() {
 	initFramesLazy();
-	initFlowLazy();
+	if (!isOnlyForRGB) {
+		initFlowLazy();
+	}
 }
 
 void LazyLoader::appendFrame(Mat& mat, const uint count) {

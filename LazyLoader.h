@@ -29,6 +29,7 @@ class LazyLoader {
 	
 	uint frameCount;
 	uint batchToLoad;
+	bool isOnlyRGB;
 
 	void initFramesLazy();
 	void initFlowLazy();
@@ -36,7 +37,7 @@ class LazyLoader {
 	void createBatch();
 	void appendFrame(Mat& mat, const uint count);
 public:
-	LazyLoader() : capture() {}
+	LazyLoader(bool isOnlyRGB) : capture() { this->isOnlyRGB = isOnlyRGB; }
 	~LazyLoader() { capture.release(); }
 
 	void initializeLazy(const char* videoFile, const uint batchSize, const uint temporalWindow);
