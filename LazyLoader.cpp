@@ -1,6 +1,7 @@
 #include "LazyLoader.h"
 
-void LazyLoader::initializeLazy(const char* video, const uint batchSize, const uint temporalWindow) {
+void LazyLoader::initializeLazy(const char* video, const uint batchSize, const uint temporalWindow, bool isOnlyForRGB) {
+    this->isOnlyForRGB = isOnlyForRGB;
 	frames.clear();
 	flows.clear();
 	if (!video) {

@@ -27,8 +27,8 @@ class Video:
         self.clip_optical_flow_at=int(clip_optical_flow_at)
         self.features = [] #np.array([])
         self.is_only_for_rgb = is_only_for_rgb
-        self.loader = libCppInterface.LazyLoader(self.is_only_for_rgb)
-        self.loader.initializeLazy(self.file_name, self.batch_size, self.temporal_window)
+        self.loader = libCppInterface.LazyLoader()
+        self.loader.initializeLazy(self.file_name, self.batch_size, self.temporal_window, self.is_only_for_rgb)
 
     def has_data(self):
         return self.loader.hasNextBatch()
@@ -60,6 +60,7 @@ class Video:
 
 @begin.start
 def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='', is_only_for_rgb):
+    is_only_for_rgb = bool(is_only_for_rgb)
     if base_path_to_chk_pts=='' or dest_path=='':
         raise Exception('Please provide path to the model checkpoints and to the destination features')
 

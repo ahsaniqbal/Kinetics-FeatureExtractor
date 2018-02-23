@@ -29,7 +29,7 @@ class LazyLoader {
 	
 	uint frameCount;
 	uint batchToLoad;
-	bool isOnlyRGB;
+	bool isOnlyForRGB;
 
 	void initFramesLazy();
 	void initFlowLazy();
@@ -37,10 +37,10 @@ class LazyLoader {
 	void createBatch();
 	void appendFrame(Mat& mat, const uint count);
 public:
-	LazyLoader(bool isOnlyRGB) : capture() { this->isOnlyRGB = isOnlyRGB; }
+	LazyLoader() : capture() { this->isOnlyForRGB = false; }
 	~LazyLoader() { capture.release(); }
 
-	void initializeLazy(const char* videoFile, const uint batchSize, const uint temporalWindow);
+	void initializeLazy(const char* videoFile, const uint batchSize, const uint temporalWindow, bool isOnlyRGB);
 	
 	bool hasNextBatch();
 	np::ndarray nextBatchFrames();
