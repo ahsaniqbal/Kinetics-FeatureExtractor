@@ -2,7 +2,7 @@ import os
 import os.path as osp
 import extractor
 import extractor_lazy
-import extractor_ucf
+#import extractor_ucf
 import libCppInterface
 
 dest_path = './test'
