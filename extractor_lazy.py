@@ -47,10 +47,11 @@ class Video:
     def append_feature(self, rgb_features, flow_features):
         for i in range(rgb_features.shape[0]):
             self.features.append( np.concatenate([rgb_features[i,:], flow_features[i,:]]) )
+    '''
     def append_feature(self, rgb_features):
         for i in range(rgb_features.shape[0]):
             self.features.append(rgb_features[i,:])
-
+    '''
     def finalize(self, dest_path):
         print(dest_path)
         data = np.array( self.features )
@@ -59,7 +60,7 @@ class Video:
 
 
 @begin.start
-def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='', is_only_for_rgb=0):
+def main(videos, temporal_window=21, batch_size=1, clip_optical_flow_at=20, dest_path='', base_path_to_chk_pts='', is_only_for_rgb=0):
     is_only_for_rgb = bool(is_only_for_rgb)
     if base_path_to_chk_pts=='' or dest_path=='':
         raise Exception('Please provide path to the model checkpoints and to the destination features')
@@ -96,8 +97,8 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 
     #load models 
     with tf.variable_scope('RGB'):
-        rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
-        rgb_logits, _ = rgb_model(rgb_input, is_training=False, dropout_keep_prob=1.0)
+        rgb_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
+        rgb_mixed_5c, _ = rgb_model(rgb_input, is_training=False, dropout_keep_prob=1.0)
     rgb_variable_map = {}
     for variable in tf.global_variables():
         if variable.name.split('/')[0] == 'RGB':
@@ -106,8 +107,8 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 
     if not is_only_for_rgb:
         with tf.variable_scope('Flow'):
-            flow_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Logits')
-            flow_logits, _ = flow_model(flow_input, is_training=False, dropout_keep_prob=1.0)
+            flow_model = i3d.InceptionI3d(_NUM_CLASSES, spatial_squeeze=True, final_endpoint='Mixed_5c')
+            flow_mixed_5c, _ = flow_model(flow_input, is_training=False, dropout_keep_prob=1.0)
         flow_variable_map = {}
         for variable in tf.global_variables():
             if variable.name.split('/')[0] == 'Flow':
@@ -122,16 +123,16 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
 
 
     ##adds few avg pooling operations 
-    '''
+    
     rgb_avg_pool = tf.nn.avg_pool3d(rgb_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
     flow_avg_pool = tf.nn.avg_pool3d(flow_mixed_5c, ksize=[1, 2, 7, 7, 1], strides=[1, 1, 1, 1, 1], padding=snt.VALID)
 
     rgb_avg_pool = tf.squeeze(rgb_avg_pool, [2, 3])
     flow_avg_pool = tf.squeeze(flow_avg_pool, [2, 3])
 
-    rgb_final = tf.reduce_mean(rgb_avg_pool, axis=1)
-    flow_final = tf.reduce_mean(flow_avg_pool, axis=1)
-    '''
+    rgb_logits = tf.reduce_mean(rgb_avg_pool, axis=1)
+    flow_logits = tf.reduce_mean(flow_avg_pool, axis=1)
+    
     ########################
 
 
@@ -149,6 +150,8 @@ def main(videos, temporal_window=3, batch_size=1, clip_optical_flow_at=20, dest_
                             
                 while v.has_data():            
                     rgb, flow = v.get_batch()
+                    #print(rgb.shape)
+                    #print(flow.shape)
                     feed_dict[rgb_input] = rgb
                     if not is_only_for_rgb:
                         feed_dict[flow_input] = flow

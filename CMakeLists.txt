@@ -13,7 +13,7 @@ SET (BOOST_MIN_VERSION "1.65.0")
 set (Boost_NO_BOOST_CMAKE ON)
 
 
-FIND_PACKAGE(OpenCV 2.4.13 REQUIRED PATHS /media/work/ahsan/libs/opencv-gpu/share/OpenCV)
+FIND_PACKAGE(OpenCV 2.4.13 REQUIRED PATHS /media/work/ahsan/libs/opencv-gpu-clusters/share/OpenCV)
 FIND_PACKAGE(Boost ${BOOST_MIN_VERSION} REQUIRED)
 IF(Boost_FOUND)
   INCLUDE_DIRECTORIES("${Boost_INCLUDE_DIRS}" "/usr/include/python2.7" "${OpenCV_INCLUDE_DIRS}")
