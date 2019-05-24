@@ -11,7 +11,7 @@ Steps to Run:
 1. Build CppInterface.so (CMakeList.txt is provided, please adjust paths, 'For ubuntu 16.04 run cmake -DCUDA_USE_STATIC_CUDA_RUNTIME=OFF')
 2. run python ./extractor_lazy.py (it expects i3d.py (kinetics-i3d model code) in the same directory)
 	2.1 extractor.py expects list of video file names, 
-	2.2 temporal_window for each frame default is 3
+	2.2 temporal_window for each frame default is 21
 	2.3 batch_size default is 1
 	2.4 dest_path (path to destination features)
 	2.5 clip_optical_flow_at default value is 20
